@@ -1,0 +1,12 @@
+{
+  "name": "btc-guessr",
+  "description": "a web application to make guesses on whether the market price of Bitcoin (BTC/USD) will be higher or lower after one minute",
+  "version": "1.0.0",
+  "main": "index.js",
+  "private": true,
+  "author": "Sebastian Sauerer",
+  "license": "MIT",
+  "workspaces": [
+    "packages/*"
+  ]
+}

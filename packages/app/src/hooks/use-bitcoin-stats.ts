@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { formatDate } from "../utils";
+import { BITCOIN_STATS_KEY } from "../constants/query-keys";
 
 const ERROR_MSG = "No bitcoin stats available";
 const COINGECKO_BASE_API = "https://api.coingecko.com/api/v3";
@@ -34,7 +35,7 @@ const getCurrentBitcoinStats = async () => {
 };
 
 const useBitcoinStats = () => {
-  return useQuery(["bitcoinStats"], getCurrentBitcoinStats);
+  return useQuery([BITCOIN_STATS_KEY], getCurrentBitcoinStats);
 };
 
 export default useBitcoinStats;

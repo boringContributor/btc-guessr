@@ -1,25 +1,29 @@
-import { UseMutateFunction } from "@tanstack/react-query";
 import { FC, MouseEvent } from "react";
-import useNewGuess from "../hooks/use-new-guess";
+import useNewGame from "../hooks/use-new-game";
+import { Guess } from "../types";
+import { useGameStore } from "../store";
 
 interface VoteButtonProps {
-  label: "up" | "down";
+  label: Guess;
 }
 
 const VoteButton: FC<VoteButtonProps> = ({ label }) => {
-  const { mutate } = useNewGuess();
+  const { mutate } = useNewGame();
+  const { latestId, isRunning } = useGameStore((state) => state.gameData);
 
   const onClick = (event: MouseEvent<HTMLButtonElement>) => {
-    const guess = event.currentTarget.value;
+    const guess = event.currentTarget.value as Guess;
     mutate(guess);
   };
+
   return (
     <button
+      disabled={Boolean(latestId && isRunning)}
       value={label.toLowerCase()}
       onClick={onClick}
-      className="w-40 flex items-center justify-between px-5 py-3 transition-colors bg-orange-600 border border-orange-600 rounded-lg hover:bg-transparent group focus:outline-none focus:ring"
+      className="disabled:bg-transparent  w-40 flex items-center justify-between px-5 py-3 transition-colors bg-orange-600 border border-orange-600 rounded-lg hover:bg-transparent group focus:outline-none focus:ring"
     >
-      <span className="font-medium text-white transition-colors group-active:text-orange-500 group-hover:text-orange-600 capitalize">
+      <span className="group-disabled:text-orange-600 font-medium text-white transition-colors group-active:text-orange-500 group-hover:text-orange-600 capitalize">
         {label}
       </span>
 

@@ -2,7 +2,7 @@ import { Logger } from "@aws-lambda-powertools/logger";
 import { APIGatewayProxyEventV2, APIGatewayProxyResultV2 } from "aws-lambda";
 import { DynamoDB } from "aws-sdk";
 import { getEnvVarOrThrow } from "../../utils/helper";
-import { getCurrentBitcoinPriceInUSD } from "../../utils/bitcoin-api";
+import { GuessData } from "../../types";
 
 const NEW_GUESS_TABLE_NAME = getEnvVarOrThrow("NEW_GUESS_TABLE_NAME");
 
@@ -12,48 +12,41 @@ const ddb = new DynamoDB.DocumentClient();
 export async function main(
   event: APIGatewayProxyEventV2
 ): Promise<APIGatewayProxyResultV2> {
-  logger.info("check result", { event: JSON.stringify(event) });
+  logger.info("check result for id", { event: JSON.stringify(event) });
 
   try {
-    const body = JSON.parse(event.body!);
-    const guess = body.guess;
-    const oldPrice = body.currentPriceInUSD;
-    const latestPrice = await getCurrentBitcoinPriceInUSD();
+    if (!event.pathParameters) return { statusCode: 400 };
+    const id = event.pathParameters.id as string;
 
-    const diff = latestPrice - oldPrice;
+    const ddbNewGuessParam: DynamoDB.DocumentClient.GetItemInput = {
+      TableName: NEW_GUESS_TABLE_NAME,
+      Key: { id },
+    };
 
-    let isCorrectGuessed = false;
-    if (diff > 0 && guess === "up") {
-      isCorrectGuessed = true;
+    const { Item } = await ddb.get(ddbNewGuessParam).promise();
+
+    const guessData = Item as GuessData;
+
+    logger.info(`result for ${id}`, { result: guessData });
+
+    if (!Item) {
+      return {
+        statusCode: 404,
+        body: "no game data for this id",
+        headers: {
+          "Access-Control-Allow-Origin": "*",
+        },
+      };
     }
-    if (diff < 0 && guess === "down") {
-      isCorrectGuessed = true;
-    }
-
-    // const ddbGuessParam: DynamoDB.DocumentClient.GetItemInput = {
-    //   TableName: NEW_GUESS_TABLE_NAME,
-    //   Key: {
-    //     id: "",
-    //   },
-    // };
-
-    // const { Item } = await ddb.get(ddbGuessParam).promise();
-    logger.info("comparing prices", {
-      priceChanged: latestPrice !== oldPrice,
-      guess,
-      isCorrectGuessed,
-      msg: `old price: ${oldPrice} | new price ${latestPrice}`,
-    });
-
     return {
-      body: JSON.stringify({ hello: latestPrice }),
       statusCode: 200,
+      body: JSON.stringify(guessData),
+      headers: {
+        "Access-Control-Allow-Origin": "*",
+      },
     };
   } catch (error) {
     logger.error("error on api execution", { msg: JSON.stringify(error) });
-    return {
-      body: JSON.stringify({ message: "could not execute endpoint" }),
-      statusCode: 400,
-    };
+    return Promise.reject({ message: "could not execute endpoint" });
   }
 }

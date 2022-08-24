@@ -14,18 +14,15 @@ export class BackendStack extends Stack {
     const table = new DynamoDbTable(this, "GuessTable");
     const eventBus = new EventBus(this, "eventBus");
 
-    const { checkResultLambda, newGuessLambda } = new Lambdas(
-      this,
-      "LambdaFns",
-      {
+    const { handleResultLambda, newGuessLambda, checkResultLambda } =
+      new Lambdas(this, "LambdaFns", {
         guessTable: table.guessTable,
-      }
-    );
+      });
 
     const { machine } = new StateMachine(this, "HandleResultMachine", {
       guessTable: table.guessTable,
       newGuessLambda: newGuessLambda.lambda,
-      checkResultLambda: checkResultLambda.lambda,
+      handleResultLambda: handleResultLambda.lambda,
     });
 
     const { eventBridgeIntegration } = new APIEventBridgeIntegration(
@@ -39,6 +36,7 @@ export class BackendStack extends Stack {
 
     new RestApi(this, "NewGuessApi", {
       eventBridgeIntegration,
+      checkResultLambda: checkResultLambda.lambda,
     });
   }
 }

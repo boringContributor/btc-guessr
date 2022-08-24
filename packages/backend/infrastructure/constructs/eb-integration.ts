@@ -54,6 +54,13 @@ export class APIEventBridgeIntegration extends Construct {
         integrationResponses: [
           {
             statusCode: "201",
+            responseParameters: {
+              "method.response.header.Access-Control-Allow-Headers":
+                "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'",
+              "method.response.header.Access-Control-Allow-Methods":
+                "'GET,POST,OPTIONS'",
+              "method.response.header.Access-Control-Allow-Origin": "'*'",
+            },
             responseTemplates: {
               "application/json": JSON.stringify({
                 id: "$input.path('$.Entries[0].EventId')",

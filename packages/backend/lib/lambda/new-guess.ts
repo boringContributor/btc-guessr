@@ -1,19 +1,16 @@
 import { Logger } from "@aws-lambda-powertools/logger";
-import { APIGatewayProxyCallbackV2 } from "aws-lambda";
 import { DynamoDB } from "aws-sdk";
-import { getEnvVarOrThrow } from "../../../utils/helper";
-import { nanoid } from "nanoid";
-import { getCurrentBitcoinPriceInUSD } from "../../../utils/bitcoin-api";
-import { EventBridgeEvent, Context } from "aws-lambda";
+import { getEnvVarOrThrow } from "../../utils/helper";
+import { getCurrentBitcoinPriceInUSD } from "../../utils/bitcoin-api";
+import { EventBridgeEvent } from "aws-lambda";
+import { GameStatus, GuessData } from "../../types";
 
 const NEW_GUESS_TABLE_NAME = getEnvVarOrThrow("NEW_GUESS_TABLE_NAME");
 
 const logger = new Logger({ serviceName: "New guess" });
 const ddb = new DynamoDB.DocumentClient();
 
-type NewGuessBody = {
-  guess: "up" | "down";
-};
+type NewGuessBody = Pick<GuessData, "guess">;
 
 export async function main(
   event: EventBridgeEvent<any, any>
@@ -23,12 +20,13 @@ export async function main(
   try {
     const body = event.detail as NewGuessBody;
 
-    const currentPriceInUSD = await getCurrentBitcoinPriceInUSD();
+    const oldPrice = await getCurrentBitcoinPriceInUSD();
 
     const newGuessEntry = {
-      id: nanoid(),
+      id: event.id,
       timestamp: new Date().toISOString(),
-      currentPriceInUSD,
+      oldPrice,
+      gameStatus: GameStatus.Processing,
       ...body,
     };
 

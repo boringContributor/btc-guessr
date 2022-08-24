@@ -27,6 +27,18 @@ export async function main(event: APIGatewayProxyEventV2): Promise<any> {
       isCorrectGuess = true;
     }
 
+    if (diff === 0) {
+      logger.info("price did not change", {
+        msg: `old price: ${oldPrice} | new price ${latestPrice}`,
+      });
+
+      return Promise.resolve({
+        body: event.body,
+        didPriceChange: false,
+        waitSeconds: 20,
+      });
+    }
+
     logger.info("comparing prices", {
       priceChanged: latestPrice !== oldPrice,
       guess,

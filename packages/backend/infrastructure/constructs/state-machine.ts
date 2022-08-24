@@ -20,22 +20,30 @@ export class StateMachine extends Construct {
 
     const { handleResultLambda, newGuessLambda } = props;
 
-    const definition = new tasks.LambdaInvoke(this, "New guess", {
+    const newGuessTask = new tasks.LambdaInvoke(this, "New guess", {
       lambdaFunction: newGuessLambda,
       outputPath: "$.Payload",
-    })
+    });
+
+    const waitTask = new sfn.Wait(this, "Wait x seconds", {
+      time: sfn.WaitTime.secondsPath("$.waitSeconds"),
+    });
+    const handleResultTask = new tasks.LambdaInvoke(this, "Check result", {
+      lambdaFunction: handleResultLambda,
+      outputPath: "$.Payload",
+    });
+
+    const definition = newGuessTask
+      .next(waitTask)
+      .next(handleResultTask)
       .next(
-        new sfn.Wait(this, "Wait 60 Second", {
-          time: sfn.WaitTime.duration(Duration.seconds(60)),
-        })
-      )
-      .next(
-        new tasks.LambdaInvoke(this, "Check result", {
-          lambdaFunction: handleResultLambda,
-          outputPath: "$.Payload",
-        })
-      )
-      .next(new sfn.Succeed(this, "done"));
+        new sfn.Choice(this, "Did the price change?")
+          .when(
+            sfn.Condition.booleanEquals("$.didPriceChange", false),
+            waitTask
+          )
+          .otherwise(new sfn.Succeed(this, "Done"))
+      );
 
     this.machine = new sfn.StateMachine(this, "StateMachine", {
       definition,

@@ -39,7 +39,10 @@ export async function main(
 
     await ddb.put(ddbNewGuessParam).promise();
 
-    return Promise.resolve({ body: JSON.stringify(newGuessEntry) });
+    return Promise.resolve({
+      body: JSON.stringify(newGuessEntry),
+      waitSeconds: 60,
+    });
   } catch (error) {
     logger.error("error on api execution for new guess init", {
       msg: JSON.stringify(error),

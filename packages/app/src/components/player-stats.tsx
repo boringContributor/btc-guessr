@@ -13,6 +13,7 @@ const PlayerStats = () => {
         >
           {scoreHistory.map((history) => (
             <div
+              key={history.id}
               className={`rounded-full h-2 w-2 ${
                 history.isCorrectGuess ? "bg-green-500" : "bg-red-700"
               }`}

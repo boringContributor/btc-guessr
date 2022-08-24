@@ -42,6 +42,7 @@ const useCheckResult = () => {
       enabled: Boolean(latestId) && isRunning,
       refetchInterval: 20000,
       useErrorBoundary: true,
+      refetchIntervalInBackground: true,
     }
   );
 

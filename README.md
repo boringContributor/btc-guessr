@@ -1,7 +1,6 @@
 # BTC Guessr Game
 
-BTC Guessr is a game to guess whether the Bitcoin price changed after 60 seconds The user has to guess if the new price was lower oder higher than the previous one.
-The player is able to guess without the need to log in. The score history is synced with local storage, which allows to close the browser and continue afterwards. The sequence diagram shows the general flow of the application.
+BTC Guessr is a game about guessing whether the Bitcoin price will be higher or lower after a 60 seconds time frame. Any user can play the game without the need to log in. Additionally, the score history is synced with local storage, which allows to close the browser and continue at a later point in time. Below sequence diagram shows the general flow of the application.
 
 ![sequence.png](/diagrams/sequence.png)
 
@@ -9,10 +8,9 @@ The player is able to guess without the need to log in. The score history is syn
 
 
 ## Frontend
+The initial application used NextJS, but I faced [errors]((https://github.com/pmndrs/zustand/issues/938)) with Zustands persist middleware in combination with NextJS. There is currently no straight forward way to opt-out SSR in NextJS, so I migrated the frontend codebase to Vite.
 
-Then initial application used NextJS, but I faced errors with Zustands persist middleware in combination with NextJS (https://github.com/pmndrs/zustand/issues/938). There is currently no straight forward way to opt-out SSR in NextJS, so I migrated the frontend codebase to Vite.
-
-The frontend application is built in React 18 with the following dependencies:
+The frontend application is built on React 18 with the following dependencies:
 - TailwindCSS
 - React Query: takes over the long polling process
 - Zustand: lightweight state management library, which helps to sync the users history with the local storage
@@ -23,7 +21,12 @@ The frontend application is built in React 18 with the following dependencies:
    ```
    yarn
    ```
-2. Run the application with
+
+2. Create a `.env` or `.env.local` file with the API Gateway endpoint:
+      ```
+      VITE_BACKEND_API_URL=https://...
+    ```
+1. Run the application with
    ```
    yarn dev
    ```
@@ -75,7 +78,8 @@ yarn cdk deploy
 
 ### Architecture
 
-When the user starts the game through the click of the button (either "up" or "down") a POST request is sent to the API Gateway with the route /new-guess. This request returns a new game ID to the client. The request also triggers an EventBridge rule "putEvent", which starts the async execution of Step Function tasks. These tasks store the initial game data to DynamoDB, waits 60 seconds and then checks if the price changed and whether the user was right or not. It waits another 20 seconds, if the price did not change after 60 seconds. These final result is stored with the previous DynamoDB entry. The client has the option to get status updates during the whole workflow, by executing a GET request on /check-result/{id}. The above mentioned information are send back with a game status flag "processing" or "finished".
+When the user starts the game through the click of a button (either "up" or "down") a POST request is sent to the API Gateway route /new-guess. This endpoint returns a new game ID to the client. The request also triggers an EventBridge rule "putEvent", which starts the async execution of a Step Function State Machine. This state machine first stores the initial game date to DDB, and then waits 60 seconds before checking if the price changed and the user guessed correctly or not. In case of the price not changing, it waits another additional 20 seconds before repeating the previous check. This final result is stored with the previous DynamoDB entry. During the whole process the client has the option to get status updates, by executing a GET request on /check-result/{id}. In addition to above mentioned information, a game status of "processing" or "finished" is returned by this endpoint.
+
 
 ![architecture.png](/diagrams/architecture.png)
 
@@ -143,7 +147,7 @@ The input validation is done through the API Gateway itself.
 ### EventBridge
 As there is no way to integrate Step Functions in an async workflow with
 API Gateway and the CDK, I use Event Bridge as a layer between API Gateway and Step Functions. There is only one rule, which triggers the execution of the Step Function workflow
-
+and returns the event ID, which is used as the game ID.
 ```json
 {
   "detail-type": ["putEvent"]
@@ -155,9 +159,9 @@ There are 3 lambda functions:
 
 1. new-guess: stores the initial game data to DynamoDB
 2. handle-result: checks if the initial price differs from the current price and updates the DynamoDB entry when the game is finished
-3. check-result: allows the user to get status updates about the give game ID.
+3. check-result: allows the user to get status updates about the given game ID
 
-### StepFunctions
+### Step Functions
 There are 3 tasks:
 1. newGuessTasks: is triggered through EventBridge and starts the above mentioned lambda function, it returns the game data and a property "waitSeconds" with 60 seconds as its value.
 2. waitTask: gets a variable "waitSeconds" and waits for this amount of time
@@ -181,14 +185,14 @@ Example:
 ```
 
 ## Project Improvements
-- The AWS CDK has a lot of types and often VSCode has difficulties with this fact. There are newer modular CDK packages which maybe help to prevent that.
+- The AWS CDK has a lot of types, which VSCode often has difficulties with There are newer modular CDK packages which maybe help to prevent that.
 - The Frontend is deployed to Vercel, as its fast and easy. It would be better to have a dedicated CDK construct for the frontend deployment and use AWS for it as well.
-- The backend endpoints do have very generous CORS rules which should not be applied for a production environment.
+- The backend endpoints do have very generous CORS rules which should not be used in a production environment.
 - The provisioned AWS services do have very generous IAM policies applied. A production environment should always aim for the principle of least privilige (POLP).
  often changes every minute, another API tier or inteligent caching mechanismn should be introduced.
- - Adding a TTL to the DynamoDB table without a userId connected as it is not used anymore
+ - Adding a Time-To-Live (TTL) to DynamoDB entries which are not connected to a potential userID. We can not query such data and therefore should free up that space after 48h through a TTL key.
 
 ## Feature Improvements
-- User Management: If the user signs up for an account, its history is stored and synced with the cloud. Adding a global secondary index (GSI) "byUser" helps to retrieve data for a specific user and allows to implement the following improvements as well:
+- User Management: If the user signs up for an account, its userID could be attached to the already existing game history. Adding a global secondary index (GSI) "byUser" helps to retrieve data for a specific user and allows to implement the following improvements as well:
 - Leaderboard: Claim a username and be present in a public leaderboard
 - Persisted history of guesses: See a persisted history of your previous guesses. The local history is already stored in local storage, but this can be modified and only helps to give updates to non-authenticated players.

@@ -4,8 +4,6 @@ import { Construct } from "constructs";
 import { Duration, aws_dynamodb } from "aws-cdk-lib";
 import { NodejsFunction } from "aws-cdk-lib/aws-lambda-nodejs";
 
-// hier gehe ich davon aus dass nach 60 sec der preis anders ist, was wenn nicht ?
-// -> when + otherwise + afterwards https://www.proud2becloud.com/step-function-with-aws-cdk-in-action-our-points-of-view-about-it-using-typescript/
 interface Props {
   newGuessLambda: NodejsFunction;
   handleResultLambda: NodejsFunction;

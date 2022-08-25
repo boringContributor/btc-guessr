@@ -31,6 +31,13 @@ The frontend application is built on React 18 with the following dependencies:
    yarn dev
    ```
 
+### Testing
+Setup with [react-testing-library](https://testing-library.com/docs/react-testing-library/intro/), [vitest](https://vitest.dev/) and [msw](https://mswjs.io/).
+There are some very basic tests executed with
+   ```
+   yarn test
+   ```
+
 ### Deployment
 The web application is deployed to Vercel, as it was the fastest way to get things up and running.
 1. Production build
@@ -189,8 +196,8 @@ Example:
 - The Frontend is deployed to Vercel, as its fast and easy. It would be better to have a dedicated CDK construct for the frontend deployment and use AWS for it as well.
 - The backend endpoints do have very generous CORS rules which should not be used in a production environment.
 - The provisioned AWS services do have very generous IAM policies applied. A production environment should always aim for the principle of least privilige (POLP).
- often changes every minute, another API tier or inteligent caching mechanismn should be introduced.
  - Adding a Time-To-Live (TTL) to DynamoDB entries which are not connected to a potential userID. We can not query such data and therefore should free up that space after 48h through a TTL key.
+ - Cache the Coingecko API request on the backend. Option: store current price in DynamoDB every x seconds to avoid heavy requests on their API.
 
 ## Feature Improvements
 - User Management: If the user signs up for an account, its userID could be attached to the already existing game history. Adding a global secondary index (GSI) "byUser" helps to retrieve data for a specific user and allows to implement the following improvements as well:

@@ -3,6 +3,7 @@ import PlayerStats from "../components/player-stats";
 import VoteButton from "../components/vote-button";
 import useCheckResult from "../hooks/use-check-result";
 import LatestResult from "../components/latest-result";
+import { Guess } from "../types";
 
 const Index = () => {
   const { data, isFinished, isProcessing } = useCheckResult();
@@ -42,8 +43,13 @@ const Index = () => {
       {isFinished && data ? <LatestResult result={data} /> : null}
 
       <div className="flex justify-center gap-4 mt-10">
-        <VoteButton label="up" />
-        <VoteButton label="down" />
+        {["up", "down"].map((label) => (
+          <VoteButton
+            key={label}
+            label={label as Guess}
+            disabled={isProcessing}
+          />
+        ))}
       </div>
       {isProcessing ? (
         <p className="text-white font-extrabold text-center">

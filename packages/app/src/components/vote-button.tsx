@@ -1,15 +1,14 @@
 import { FC, MouseEvent } from "react";
 import useNewGame from "../hooks/use-new-game";
 import { Guess } from "../types";
-import { useGameStore } from "../store";
 
 interface VoteButtonProps {
   label: Guess;
+  disabled: boolean;
 }
 
-const VoteButton: FC<VoteButtonProps> = ({ label }) => {
+const VoteButton: FC<VoteButtonProps> = ({ label, disabled }) => {
   const { mutate } = useNewGame();
-  const { latestId, isRunning } = useGameStore((state) => state.gameData);
 
   const onClick = (event: MouseEvent<HTMLButtonElement>) => {
     const guess = event.currentTarget.value as Guess;
@@ -18,7 +17,7 @@ const VoteButton: FC<VoteButtonProps> = ({ label }) => {
 
   return (
     <button
-      disabled={Boolean(latestId && isRunning)}
+      disabled={disabled}
       value={label.toLowerCase()}
       onClick={onClick}
       className="disabled:bg-transparent  w-40 flex items-center justify-between px-5 py-3 transition-colors bg-orange-600 border border-orange-600 rounded-lg hover:bg-transparent group focus:outline-none focus:ring"

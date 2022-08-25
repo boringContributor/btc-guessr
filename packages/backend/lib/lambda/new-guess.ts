@@ -1,29 +1,32 @@
 import { Logger } from "@aws-lambda-powertools/logger";
-import { DynamoDB } from "aws-sdk";
+import { DynamoDB, StepFunctions } from "aws-sdk";
 import { getEnvVarOrThrow } from "../../utils/helper";
 import { getCurrentBitcoinPriceInUSD } from "../../utils/bitcoin-api";
-import { EventBridgeEvent } from "aws-lambda";
+import { APIGatewayProxyEventV2, APIGatewayProxyResultV2 } from "aws-lambda";
 import { GameStatus, GuessData } from "../../types";
+import { nanoid } from "nanoid";
 
 const NEW_GUESS_TABLE_NAME = getEnvVarOrThrow("NEW_GUESS_TABLE_NAME");
+const STEP_FUNCTION_ARN = getEnvVarOrThrow("STEP_FUNCTION_ARN");
 
 const logger = new Logger({ serviceName: "New guess" });
 const ddb = new DynamoDB.DocumentClient();
+const stepfunctions = new StepFunctions();
 
 type NewGuessBody = Pick<GuessData, "guess">;
 
 export async function main(
-  event: EventBridgeEvent<any, any>
-): Promise<{ body: string }> {
+  event: APIGatewayProxyEventV2
+): Promise<APIGatewayProxyResultV2> {
   logger.info("new guess", { event: JSON.stringify(event) });
 
   try {
-    const body = event.detail as NewGuessBody;
+    const body = JSON.parse(event.body!) as NewGuessBody;
 
     const oldPrice = await getCurrentBitcoinPriceInUSD();
-
+    const id = nanoid();
     const newGuessEntry = {
-      id: event.id,
+      id,
       timestamp: new Date().toISOString(),
       oldPrice,
       gameStatus: GameStatus.Processing,
@@ -39,14 +42,25 @@ export async function main(
 
     await ddb.put(ddbNewGuessParam).promise();
 
-    return Promise.resolve({
-      body: JSON.stringify(newGuessEntry),
-      waitSeconds: 60,
+    stepfunctions.startExecution({
+      stateMachineArn: STEP_FUNCTION_ARN,
+      name: "state-machine",
+      input: JSON.stringify({
+        body: JSON.stringify(newGuessEntry),
+        waitSeconds: 60,
+      }),
     });
+
+    return {
+      statusCode: 201,
+      body: JSON.stringify({ id }),
+    };
   } catch (error) {
     logger.error("error on api execution for new guess init", {
       msg: JSON.stringify(error),
     });
-    return Promise.reject(error);
+    return {
+      statusCode: 500,
+    };
   }
 }

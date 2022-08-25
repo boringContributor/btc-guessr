@@ -4,15 +4,12 @@ import { DynamoDbTable } from "../constructs/ddb";
 import { RestApi } from "../constructs/rest-api";
 import { StateMachine } from "../constructs/state-machine";
 import { Lambdas } from "../constructs/lambdas";
-import { EventBus } from "aws-cdk-lib/aws-events";
-import { APIEventBridgeIntegration } from "../constructs/eb-integration";
 
 export class BackendStack extends Stack {
   constructor(scope: Construct, id: string, props?: StackProps) {
     super(scope, id, props);
 
     const table = new DynamoDbTable(this, "GuessTable");
-    const eventBus = new EventBus(this, "eventBus");
 
     const { handleResultLambda, newGuessLambda, checkResultLambda } =
       new Lambdas(this, "LambdaFns", {
@@ -25,17 +22,13 @@ export class BackendStack extends Stack {
       handleResultLambda: handleResultLambda.lambda,
     });
 
-    const { eventBridgeIntegration } = new APIEventBridgeIntegration(
-      this,
-      "APIEventBridgeIntegration",
-      {
-        eventBus,
-        stateMachine: machine,
-      }
+    newGuessLambda.lambda.addEnvironment(
+      "STEP_FUNCTION_ARN",
+      machine.stateMachineArn
     );
 
     new RestApi(this, "NewGuessApi", {
-      eventBridgeIntegration,
+      newGuessLambda: newGuessLambda.lambda,
       checkResultLambda: checkResultLambda.lambda,
     });
   }

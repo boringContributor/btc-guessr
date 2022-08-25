@@ -1,6 +1,5 @@
 import { CfnOutput } from "aws-cdk-lib";
 import {
-  AwsIntegration,
   JsonSchemaType,
   Model,
   RequestValidator,
@@ -8,13 +7,13 @@ import {
   LambdaIntegration,
   Cors,
   MethodLoggingLevel,
-  LambdaRestApi
+  LambdaRestApi,
 } from "aws-cdk-lib/aws-apigateway";
 import { Construct } from "constructs";
 import { NodejsFunction } from "aws-cdk-lib/aws-lambda-nodejs";
 
 interface Props {
-  eventBridgeIntegration: AwsIntegration;
+  newGuessLambda: NodejsFunction;
   checkResultLambda: NodejsFunction;
 }
 
@@ -24,7 +23,7 @@ export class RestApi extends Construct {
   constructor(scope: Construct, id: string, props: Props) {
     super(scope, id);
 
-    const { eventBridgeIntegration, checkResultLambda } = props;
+    const { newGuessLambda, checkResultLambda } = props;
 
     const api = new AwsRestApi(this, "api", {
       description: "entry point for the bitcoin guessr api",
@@ -65,27 +64,45 @@ export class RestApi extends Construct {
       .addResource("check-result")
       .addResource("{id}");
 
-    createNewGameResource.addMethod("POST", eventBridgeIntegration, {
-      methodResponses: [
-        {
-          statusCode: "201",
-          responseParameters: {
-            "method.response.header.Access-Control-Allow-Headers": true,
-            "method.response.header.Access-Control-Allow-Methods": true,
-            "method.response.header.Access-Control-Allow-Credentials": true,
-            "method.response.header.Access-Control-Allow-Origin": true,
+    createNewGameResource.addMethod(
+      "POST",
+      new LambdaIntegration(newGuessLambda, {
+        proxy: true,
+        integrationResponses: [
+          {
+            statusCode: "201",
+            responseParameters: {
+              "method.response.header.Access-Control-Allow-Headers":
+                "'Content-Type,Accept,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'",
+              "method.response.header.Access-Control-Allow-Methods":
+                "'GET,POST,OPTIONS'",
+              "method.response.header.Access-Control-Allow-Origin": "'*'",
+            },
           },
-        },
-      ],
-      requestValidator: new RequestValidator(this, "body-validator", {
-        restApi: api,
-        requestValidatorName: "body-validator",
-        validateRequestBody: true,
+        ],
       }),
-      requestModels: {
-        "application/json": apiValidationModel,
-      },
-    });
+      {
+        methodResponses: [
+          {
+            statusCode: "201",
+            responseParameters: {
+              "method.response.header.Access-Control-Allow-Headers": true,
+              "method.response.header.Access-Control-Allow-Methods": true,
+              "method.response.header.Access-Control-Allow-Credentials": true,
+              "method.response.header.Access-Control-Allow-Origin": true,
+            },
+          },
+        ],
+        requestValidator: new RequestValidator(this, "body-validator", {
+          restApi: api,
+          requestValidatorName: "body-validator",
+          validateRequestBody: true,
+        }),
+        requestModels: {
+          "application/json": apiValidationModel,
+        },
+      }
+    );
 
     checkResultResource.addMethod(
       "GET",

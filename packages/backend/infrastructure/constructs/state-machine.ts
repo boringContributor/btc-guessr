@@ -18,11 +18,6 @@ export class StateMachine extends Construct {
 
     const { handleResultLambda, newGuessLambda } = props;
 
-    const newGuessTask = new tasks.LambdaInvoke(this, "New guess", {
-      lambdaFunction: newGuessLambda,
-      outputPath: "$.Payload",
-    });
-
     const waitTask = new sfn.Wait(this, "Wait x seconds", {
       time: sfn.WaitTime.secondsPath("$.waitSeconds"),
     });
@@ -31,8 +26,7 @@ export class StateMachine extends Construct {
       outputPath: "$.Payload",
     });
 
-    const definition = newGuessTask
-      .next(waitTask)
+    const definition = waitTask
       .next(handleResultTask)
       .next(
         new sfn.Choice(this, "Did the price change?")
@@ -48,5 +42,7 @@ export class StateMachine extends Construct {
       stateMachineType: sfn.StateMachineType.EXPRESS,
       timeout: Duration.minutes(2),
     });
+
+    this.machine.grantStartExecution(newGuessLambda);
   }
 }

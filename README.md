@@ -151,28 +151,17 @@ The request body has one property **guess**, which only allows either "down" or 
 
 The input validation is done through the API Gateway itself.
 
-### EventBridge
-As there is no way to integrate Step Functions in an async workflow with
-API Gateway and the CDK, I use Event Bridge as a layer between API Gateway and Step Functions. There is only one rule, which triggers the execution of the Step Function workflow
-and returns the event ID, which is used as the game ID.
-```json
-{
-  "detail-type": ["putEvent"]
-}
-```
-
 ### Lambda
 There are 3 lambda functions:
 
-1. new-guess: stores the initial game data to DynamoDB
+1. new-guess: stores the initial game data to DynamoDB and starts the state machine with a 60 seconds wait state.
 2. handle-result: checks if the initial price differs from the current price and updates the DynamoDB entry when the game is finished
 3. check-result: allows the user to get status updates about the given game ID
 
 ### Step Functions
-There are 3 tasks:
-1. newGuessTasks: is triggered through EventBridge and starts the above mentioned lambda function, it returns the game data and a property "waitSeconds" with 60 seconds as its value.
-2. waitTask: gets a variable "waitSeconds" and waits for this amount of time
-3. handleResultTask triggers the above mentioned handle-result lambda and returns whether the price did change or not with a property "didPriceChange" and "waitSeconds" with 20 seconds. That means that as long as the price did not change it will wait 20 seconds again and again until it changed and is then resolved by updating the DynamoDB items gameStatus to "finished".
+There are 2 tasks:
+1. waitTask: gets a variable "waitSeconds" and waits for this amount of time
+2. handleResultTask triggers the above mentioned handle-result lambda and returns whether the price did change or not with a property "didPriceChange" and "waitSeconds" with 20 seconds. That means that as long as the price did not change it will wait 20 seconds again and again until it changed and is then resolved by updating the DynamoDB items gameStatus to "finished".
 
 ![stepfunctionsgraph.png](/diagrams/stepfunctions.png)
 ### DynamoDB
